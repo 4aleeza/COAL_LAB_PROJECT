@@ -1,0 +1,129 @@
+INCLUDE Irvine32.inc
+
+.data
+;mini FAST database system
+
+
+MAX = 50 ;fifty students max
+STRLEN = 10;max string length
+
+
+;Arrays
+first_name BYTE MAX DUP(STRLEN DUP(?))
+last_name  BYTE MAX DUP(STRLEN DUP(?))
+id         BYTE MAX DUP(STRLEN DUP(?))
+avg        BYTE MAX DUP(?)
+attendance BYTE MAX DUP(?)
+
+
+saved BYTE "Saved Information. ",0
+addrecmsg1 BYTE "Enter First Name: ",0
+addrecmsg2 BYTE "Enter Last Name: ",0
+addrecmsg3 BYTE "Enter Nu-ID: ",0
+addrecmsg4 BYTE "Enter Attendance Percentage: ",0
+addrecmsg5 BYTE "Enter Average Percentage: ",0
+
+; Buffers for input
+inputBuffer BYTE 50 DUP(?)
+
+
+
+.code
+main PROC
+
+
+call add_record
+
+    exit
+main ENDP
+END main
+
+
+;**************************************** ADD_RECORD ******************************************************
+
+
+add_record PROC       ;procedure/method to save data of student
+
+;==========first_name===========
+
+mov edx, OFFSET addrecmsg1
+call WriteString
+mov edx, OFFSET inputBuffer
+mov ecx, LENGTHOF inputBuffer
+call ReadString
+
+
+lea edi, first_name             ;LOADS ADDY 
+mov esi, OFFSET inputBuffer     ;first element of inputbuffer's address in esi
+mov ecx, STRLEN              ;name size in ecx to use 'rep' to move multiple string bytes in first_name[0]
+rep movsb
+
+mov edx, OFFSET saved
+call WriteString
+call Crlf
+
+;========last name===============
+
+mov edx, OFFSET addrecmsg2
+call WriteString
+mov edx, OFFSET inputBuffer
+mov ecx, SIZEOF inputBuffer
+call ReadString
+
+lea edi, last_name
+mov esi, OFFSET inputBuffer
+mov ecx, STRLEN
+rep movsb
+
+mov edx, OFFSET saved
+call WriteString
+call Crlf
+
+;=========NU-ID==========
+mov edx, OFFSET addrecmsg3
+call WriteString
+mov edx, OFFSET inputBuffer
+mov ecx, LENGTHOF inputBuffer
+call ReadString
+
+lea edi, id
+mov esi, OFFSET inputBuffer
+mov ecx, STRLEN
+rep movsb
+
+mov edx, OFFSET saved
+call WriteString
+call Crlf
+
+;==========attendance==============
+
+mov edx, OFFSET addrecordmsg4
+call WriteString
+call ReadDec
+mov ebx, 0
+mov bl, al
+mov attendance[0], bl
+
+mov edx, OFFSET saved
+call WriteString
+call Crlf
+
+;================marks===============
+
+
+mov edx, OFFSET addrecmsg5
+call WriteString
+call ReadDec
+mov ebx, 0
+mov bl, al
+mov avg[0], bl
+
+mov edx, OFFSET saved
+call WriteString
+call Crlf
+
+ret
+
+add_record ENDP
+
+
