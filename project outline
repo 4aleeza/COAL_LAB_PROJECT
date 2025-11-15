@@ -1,0 +1,189 @@
+Project Overview: Mini Database (MASM + Irvine32)
+Let’s assume your mini database stores student records (Name, ID, and Marks).
+Main features:
+
+Add new record
+
+Display all records
+
+Search by ID
+
+Delete or update record
+
+Save/load data from file
+
+👩‍💻 Division of Tasks Between Aleeza and Rehma
+🧠 Aleeza — Core Logic + Data Management
+Main focus: database structure, logic, and record manipulation
+You’ll handle most of the computational logic and data structures.
+
+Your tasks:
+
+Design and declare data structures:
+
+Arrays for IDs, names, marks
+
+Example:
+
+ids DWORD 10 DUP(?)
+names BYTE 10 DUP(20 DUP(?))
+marks DWORD 10 DUP(?)
+count DWORD 0
+(Show use of arrays and memory management)
+
+Add Record Procedure:
+
+Input name, ID, and marks using ReadString, ReadInt
+
+Store in the arrays
+
+Increment count
+
+Use string operations to save name
+
+Search Record Procedure:
+
+Input ID → linear search through ids
+
+Display corresponding name and marks
+
+Uses loops, CMP, conditional jumps
+
+Delete or Update Record Procedure (optional bonus):
+
+Reuse your search logic
+
+If found, either overwrite data or shift array elements up
+
+Great chance to use looping + conditional branching
+
+Testing and Integration:
+
+Combine your procedures into a proper main menu call structure.
+
+Assembly concepts you’ll cover:
+
+Arrays and indexing
+
+Conditional branching (JE, JNE, etc.)
+
+Loops
+
+Procedures with parameters
+
+String operations
+
+Data validation logic
+
+👩‍💻 Rehma — User Interface + File Handling + Utilities
+Main focus: input/output interface, saving and loading records, menu system
+
+Her tasks:
+
+Menu Display + Control:
+
+Show main menu:
+
+1. Add Record
+2. Display All
+3. Search
+4. Save to File
+5. Load from File
+6. Exit
+Read user choice using ReadInt
+
+Use CMP + JE/JMP to call relevant procedures
+
+(Nice use of branching and control flow)
+
+Display All Records Procedure:
+
+Loop through arrays and print each record
+
+Use WriteString, WriteInt
+
+Practice loops, procedure calls, and formatting
+
+File Handling Procedures:
+
+Use Irvine32’s file I/O routines:
+
+CreateFile, OpenFile, WriteToFile, ReadFromFile, CloseFile
+
+Implement SaveRecords and LoadRecords
+
+You’ll show advanced Assembly, demonstrating real data persistence.
+
+Input/Output Helper Procedures:
+
+Procedure for reading strings (e.g., names)
+
+Procedure for displaying formatted record output (so Aleeza can reuse it)
+
+UI Polish (Optional Bonus):
+
+Add borders, text formatting, spacing
+
+Maybe even “clearing” screen using multiple CRLFs
+
+Assembly concepts covered:
+
+Loops and control flow
+
+File I/O operations
+
+String and integer input/output
+
+Procedures and modular programming
+
+System calls through Irvine routines
+
+🔗 How You’ll Combine Work
+Part	Person Responsible	How it Connects
+Data declarations	Aleeza	Shared through .data section
+Procedures	Both	Keep each in .code under labels (Aleeza_Proc / Rehma_Proc)
+Menu control	Rehma	Calls Aleeza’s procedures
+File save/load	Rehma	Reads/writes Aleeza’s arrays
+Main loop	Rehma	Integrates all functionality
+🧩 Example Structure (Simplified)
+.data
+; Shared arrays
+ids DWORD 10 DUP(?)
+names BYTE 10 DUP(20 DUP(?))
+marks DWORD 10 DUP(?)
+count DWORD 0
+
+.code
+main PROC
+    CALL ShowMenu
+    exit
+main ENDP
+
+; ==== Rehma’s Side ====
+ShowMenu PROC
+    ; display menu, take choice
+    ; call AddRecord / DisplayAll / etc.
+ShowMenu ENDP
+
+SaveToFile PROC
+    ; file handling code
+SaveToFile ENDP
+
+; ==== Aleeza’s Side ====
+AddRecord PROC
+    ; input id, name, marks
+AddRecord ENDP
+
+SearchRecord PROC
+    ; search logic
+SearchRecord ENDP
+END main
+✅ Summary of Division
+Concept	Aleeza	Rehma
+Arrays, memory, and record logic	✅	
+Procedures with parameters	✅	✅
+Conditional jumps and loops	✅	✅
+File handling		✅
+Menu and UI		✅
+Search/update logic	✅	
+Display/formatting		✅
