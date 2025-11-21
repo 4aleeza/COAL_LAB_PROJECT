@@ -1,0 +1,1023 @@
+INCLUDE Irvine32.inc
+
+.data
+; Configuration
+MAX     = 50
+STRLEN  = 20        ; bytes per string (including room for null terminator)
+
+; Data arrays: MAX records × STRLEN bytes each
+first_name  BYTE MAX * STRLEN DUP(0)
+last_name   BYTE MAX * STRLEN DUP(0)
+id_array    BYTE MAX * STRLEN DUP(0)
+avg         BYTE MAX DUP(0)
+attendance  BYTE MAX DUP(0)
+
+countRec    DWORD 0      ; number of records currently stored
+
+; Messages
+menuMsg      BYTE "=== FAST Mini Database ===",0Dh,0Ah,0
+menu1        BYTE "1. Add Record",0Dh,0Ah,0
+menu2        BYTE "2. Display by ID",0Dh,0Ah,0
+menu3        BYTE "3. Display All",0Dh,0Ah,0
+menu4        BYTE "4. Delete by ID",0Dh,0Ah,0
+menu5        BYTE "5. Update Record",0Dh,0Ah,0
+menu6        BYTE "6. Count Total Students",0Dh,0Ah,0
+menu7        BYTE "7. Clear All Records",0Dh,0Ah,0
+menu8        BYTE "8. Exit",0Dh,0Ah,0
+menu9        BYTE "9. Search Name (LIKE)",0Dh,0Ah,0
+
+menu11 BYTE "11. Minimum Attendance",0Dh,0Ah,0
+menu12 BYTE "12. Maximum Attendance",0Dh,0Ah,0
+menu13 BYTE "13. Minimum Marks",0Dh,0Ah,0
+menu14 BYTE "14. Maximum Marks",0Dh,0Ah,0
+
+
+promptChoic  BYTE "Enter choice: ",0
+savedMsg     BYTE "Saved Information.",0Dh,0Ah,0
+notFoundMsg  BYTE "Data For The ID Not Found.",0Dh,0Ah,0
+delMsg       BYTE "Record deleted.",0Dh,0Ah,0
+updMsg       BYTE "Record updated.",0Dh,0Ah,0
+clearMsg     BYTE "All records cleared.",0Dh,0Ah,0
+countMsg     BYTE "Total students: ",0
+
+
+
+msg_enter_char BYTE "Enter the character: ",0
+msg_no_match   BYTE "No matching records found.",0
+msg_search_menu BYTE "SEARCH OPTIONS:",0Dh,0Ah,0
+msg_search_opt1 BYTE "1. First Name STARTS WITH",0Dh,0Ah,0
+msg_search_opt2 BYTE "2. First Name ENDS WITH",0Dh,0Ah,0
+msg_enter_choice BYTE "Enter choice: ",0
+msg_invalid BYTE "Invalid choice.",0Dh,0Ah,0
+msg_norec BYTE "No Record Found",0Dh,0Ah,0
+
+
+
+; Add record prompts
+addrec1      BYTE "Enter First Name: ",0
+addrec2      BYTE "Enter Last Name: ",0
+addrec3      BYTE "Enter Nu-ID: ",0
+addrec4      BYTE "Enter Attendance Percentage (0-100): ",0
+addrec5      BYTE "Enter Average Percentage (0-100): ",0
+
+; Search prompts
+searchTypeMsg BYTE "Choose search type:",0Dh,0Ah,0
+searchOpt1    BYTE "1. Starts with",0Dh,0Ah,0
+searchOpt2    BYTE "2. Ends with",0Dh,0Ah,0
+searchOpt3    BYTE "3. Contains",0Dh,0Ah,0
+enterSubMsg   BYTE "Enter substring: ",0
+
+; Aggregate menu prompts
+aggrMsg       BYTE "=== Aggregate Functions ===",0Dh,0Ah,0
+aggrOpt1      BYTE "1. MIN()",0Dh,0Ah,0
+aggrOpt2      BYTE "2. MAX()",0Dh,0Ah,0
+aggrOpt3      BYTE "3. COUNT()",0Dh,0Ah,0
+aggrOpt4      BYTE "4. AVG()",0Dh,0Ah,0
+colMsg        BYTE "Select column: 1 = Attendance, 2 = Marks (avg): ",0
+
+; Buffers
+inputBuffer  BYTE 50 DUP(0)
+
+.code
+main PROC
+main_loop:
+    ; Show menu
+    mov edx, OFFSET menuMsg
+    call WriteString
+    mov edx, OFFSET menu1
+    call WriteString
+    mov edx, OFFSET menu2
+    call WriteString
+    mov edx, OFFSET menu3
+    call WriteString
+    mov edx, OFFSET menu4
+    call WriteString
+    mov edx, OFFSET menu5
+    call WriteString
+    mov edx, OFFSET menu6
+    call WriteString
+    mov edx, OFFSET menu7
+    call WriteString
+    mov edx, OFFSET menu8
+    call WriteString
+    mov edx, OFFSET menu9
+    call WriteString
+     mov edx, OFFSET menu11
+    call WriteString
+        mov edx, OFFSET menu12
+    call WriteString
+        mov edx, OFFSET menu13
+    call WriteString
+        mov edx, OFFSET menu14
+    call WriteString
+
+    mov edx, OFFSET promptChoic
+    call WriteString
+    call ReadInt        ; EAX = choice
+
+    cmp eax, 1
+    je do_add
+    cmp eax, 2
+    je do_display_by_id
+    cmp eax, 3
+    je do_display_all
+    cmp eax, 4
+    je do_delete_by_id
+    cmp eax, 5
+    je do_update_by_id
+    cmp eax, 6
+    ;je do_count       ; <-- this is where do_count is used
+    ;cmp eax, 7
+    je do_clear
+    cmp eax, 8
+    je do_exit
+    cmp eax, 9
+    je do_search
+    cmp eax, 11
+    je do_min_att
+    cmp eax, 12
+    je do_max_att
+    cmp eax, 13
+    je do_min_marks
+    cmp eax, 14
+    je do_max_marks
+
+
+    ; invalid choice -> loop
+    jmp main_loop
+
+do_add:
+    call add_record
+    jmp main_loop
+
+do_display_by_id:
+    ; Ask for ID
+    mov edx, OFFSET addrec3
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+
+    push OFFSET inputBuffer
+    call display_record      ; display_record will ret 4
+    jmp main_loop
+
+do_display_all:
+    call display_all
+    jmp main_loop
+
+do_delete_by_id:
+    mov edx, OFFSET addrec3
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+
+    push OFFSET inputBuffer
+    call delete_by_id
+    jmp main_loop
+
+do_update_by_id:
+    mov edx, OFFSET addrec3
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+
+    push OFFSET inputBuffer
+    call update_by_id
+    jmp main_loop
+
+
+
+do_clear:
+    call clear_all
+    jmp main_loop
+
+do_search:
+    call search_menu
+    jmp main_loop
+
+
+
+
+do_min_att:
+    call find_min_att
+    jmp main_loop
+
+do_max_att:
+    call find_max_att
+    jmp main_loop
+
+do_min_marks:
+    call find_min_marks
+    jmp main_loop
+
+do_max_marks:
+    call find_max_marks
+    jmp main_loop
+
+
+do_exit:
+    exit
+main ENDP
+
+; ========================= ADD_RECORD =========================
+add_record PROC
+    ; check capacity
+    mov eax, countRec
+    cmp eax, MAX
+    jae add_full    ; if count >= MAX, we cannot add more
+
+    ; get index = countRec
+    mov ebx, countRec      ; EBX = index
+
+    ; --- First name ---
+    mov edx, OFFSET addrec1
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+
+    ; copy inputBuffer -> first_name[index]
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx                ; EAX = index * STRLEN
+    lea edi, first_name
+    add edi, eax
+    mov esi, OFFSET inputBuffer
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; --- Last name ---
+    mov edx, OFFSET addrec2
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, last_name
+    add edi, eax
+    mov esi, OFFSET inputBuffer
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; --- Nu-ID (id_array) ---
+    mov edx, OFFSET addrec3
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, id_array
+    add edi, eax
+    mov esi, OFFSET inputBuffer
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; --- attendance ---
+    mov edx, OFFSET addrec4
+    call WriteString
+    call ReadInt
+    mov ebx, 0
+    mov bl, al
+    mov eax, countRec
+    mov attendance[eax], bl
+
+    ; --- avg marks ---
+    mov edx, OFFSET addrec5
+    call WriteString
+    call ReadInt
+    mov ebx, 0
+    mov bl, al
+    mov eax, countRec
+    mov avg[eax], bl
+
+    ; increment countRec
+    mov eax, countRec
+    inc eax
+    mov countRec, eax
+
+    mov edx, OFFSET savedMsg
+    call WriteString
+    ret
+
+add_full:
+    ; if full, notify and return
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    ret
+add_record ENDP
+
+; ======================== SEARCHING ==========================
+search_menu PROC
+    ; Display options
+    mov edx, OFFSET msg_search_menu
+    call WriteString
+
+    mov edx, OFFSET msg_search_opt1
+    call WriteString
+    mov edx, OFFSET msg_search_opt2
+    call WriteString
+
+    mov edx, OFFSET msg_enter_choice
+    call WriteString
+
+    call ReadInt      ; EAX = user choice
+
+    cmp eax, 1
+    je do_search_start
+
+    cmp eax, 2
+    je do_search_end
+
+    mov edx, OFFSET msg_invalid
+    call WriteString
+    ret
+
+do_search_start:
+    call search_starts_with
+    ret
+
+do_search_end:
+    call search_ends_with
+    ret
+
+search_menu ENDP
+
+
+search_starts_with PROC
+    ; Ask for a single character
+    mov edx, OFFSET msg_enter_char
+    call WriteString
+    call ReadChar             ; AL = character
+    mov bl, al                ; save in BL
+    call ReadChar             ; ReadChar reads ENTER, ignore it
+
+    mov esi, OFFSET first_name
+    mov eax, countRec
+    mov edi, 0                ; index = 0
+    mov ecx, 0                ; match counter
+
+start_loop:
+    cmp edi, eax
+    jge no_more_start
+
+    ; check first letter of first_name[edi]
+    mov al, [esi]             ; first character
+    cmp al, bl
+    jne next_start
+
+    ; matching record, show it
+    push edi
+    call show_record_at_index
+    pop edi
+    inc ecx                   ; count match
+
+next_start:
+    add esi, STRLEN
+    inc edi
+    jmp start_loop
+
+no_more_start:
+    cmp ecx, 0
+    jne end_start
+    mov edx, OFFSET msg_no_match
+    call WriteString
+
+end_start:
+    ret
+search_starts_with ENDP
+
+
+search_ends_with PROC
+    mov edx, OFFSET msg_enter_char
+    call WriteString
+
+    ; --- Read actual character ---
+    call ReadChar        ; AL = typed character
+    mov bl, al           ; save search char
+    call ReadChar        ; consume ENTER
+
+    mov edi, 0
+    mov eax, countRec
+    xor ecx, ecx         ; match count = 0
+
+record_loop:
+    cmp edi, eax
+    jge done_all
+
+    ; compute first_name[edi]
+mov eax, edi
+mov edx, STRLEN
+mul edx           ; eax = edi * STRLEN
+
+    mov esi, OFFSET first_name
+    add esi, eax         ; ESI -> name
+
+    ; === find length ===
+    xor ebx, ebx
+len_loop:
+    mov al, [esi+ebx]
+    cmp al, 0
+    je got_length
+    inc ebx
+    jmp len_loop
+
+got_length:
+    cmp ebx, 0
+    je next_rec          ; skip empty names
+
+    ; last character = [esi + (length-1)]
+    mov al, [esi + ebx - 1]
+    cmp al, bl
+    jne next_rec
+
+    ; match → show the record
+    push edi
+    call show_record_at_index
+    add esp, 4
+
+    inc ecx              ; count matches
+
+next_rec:
+    inc edi
+    jmp record_loop
+
+done_all:
+    cmp ecx, 0
+    jne done_return
+
+    mov edx, OFFSET msg_no_match
+    call WriteString
+
+done_return:
+    ret
+search_ends_with ENDP
+
+
+; ========================= show_record_at_index =========================
+; parameter: [ebp+8] = index (DWORD)
+; prints: first_name, last_name, attendance, avg
+; caller does:  push index  / call show_record_at_index / add esp, 4
+; ======================================================================
+show_record_at_index PROC
+    push ebp
+    mov  ebp, esp
+    push esi        ; preserve esi because search functions use it
+
+    mov  esi, [ebp+8]       ; ESI = record index
+
+    ; ---------- print first name ----------
+    mov  eax, esi
+    mov  edx, STRLEN
+    mul  edx                ; eax = index * STRLEN
+    mov  edx, OFFSET first_name
+    add  edx, eax           ; edx -> first_name[index]
+    call WriteString
+    call Crlf
+
+    ; ---------- print last name ----------
+    mov  eax, esi
+    mov  edx, STRLEN
+    mul  edx
+    mov  edx, OFFSET last_name
+    add  edx, eax
+    call WriteString
+    call Crlf
+
+    ; ---------- print attendance (BYTE array) ----------
+    mov  al, attendance[esi]
+    movzx eax, al
+    call WriteDec
+    call Crlf
+
+    ; ---------- print avg marks (BYTE array) ----------
+    mov  al, avg[esi]
+    movzx eax, al
+    call WriteDec
+    call Crlf
+
+    pop  esi
+    pop  ebp
+    ret                   ; caller cleans the stack
+show_record_at_index ENDP
+
+
+; ========================= DISPLAY_BY_ID (parameter passed as OFFSET inputBuffer) =========================
+; parameter: [ebp + 8] -> pointer to ID string to search
+display_record PROC
+    push ebp
+    mov ebp, esp
+
+    mov esi, DWORD PTR [ebp + 8]   ; esi -> target ID string pointer
+    ; index loop
+    mov ecx, countRec
+    cmp ecx, 0
+    je dr_not_found
+    mov ebx, 0                     ; index
+
+dr_loop:
+    cmp ebx, ecx
+    jge dr_not_found
+
+    ; compute address of id_array[ebx]
+    mov eax, ebx
+    mov edx, STRLEN
+    mul edx                         ; EAX = index * STRLEN
+    lea edi, id_array
+    add edi, eax                    ; edi -> id_array[index]
+
+    ; safe byte-by-byte compare (null-terminated or up to STRLEN)
+    mov esi, DWORD PTR [ebp + 8]    ; pointer to search key again
+    mov edx, STRLEN
+compare_loop:
+    mov al, [esi]
+    mov bl, [edi]
+    cmp al, bl
+    jne not_equal_dr
+    cmp al, 0
+    je dr_found
+    inc esi
+    inc edi
+    dec edx
+    jnz compare_loop
+
+    ; if we exhausted STRLEN and all matched -> found
+    jmp dr_found
+
+not_equal_dr:
+    inc ebx
+    jmp dr_loop
+
+dr_found:
+    ; show first_name[index]
+    push ebx
+    call show_record_at_index
+    add esp, 4
+
+    pop ebp
+    ret 4
+
+dr_not_found:
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    call Crlf
+    pop ebp
+    ret 4
+display_record ENDP
+
+; ========================= DISPLAY ALL =========================
+display_all PROC
+    mov ecx, countRec
+    cmp ecx, 0
+    je da_empty
+
+    mov ebx, 0
+da_loop:
+    cmp ebx, ecx
+    jge da_done
+
+    push ebx
+    call show_record_at_index
+    add esp, 4
+
+    inc ebx
+    jmp da_loop
+
+da_done:
+    ret
+
+da_empty:
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    ret
+display_all ENDP
+
+; ========================= DELETE BY ID =========================
+; parameter: [ebp + 8] -> pointer to ID string
+delete_by_id PROC
+    push ebp
+    mov ebp, esp
+
+    mov esi, DWORD PTR [ebp + 8]   ; search key
+    mov ecx, countRec
+    cmp ecx, 0
+    je del_not_found
+    mov ebx, 0                     ; index
+
+del_loop:
+    cmp ebx, ecx
+    jge del_not_found
+
+    ; compute slot address id_array[ebx]
+    mov eax, ebx
+    mov edx, STRLEN
+    mul edx
+    lea edi, id_array
+    add edi, eax
+
+    ; compare
+    mov esi, DWORD PTR [ebp + 8]
+    mov edx, STRLEN
+compare_del:
+    mov al, [esi]
+    mov bl, [edi]
+    cmp al, bl
+    jne not_equal_del
+    cmp al, 0
+    je del_found
+    inc esi
+    inc edi
+    dec edx
+    jnz compare_del
+    jmp del_found
+
+not_equal_del:
+    inc ebx
+    jmp del_loop
+
+del_found:
+    ; If deleting last element just decrement countRec
+    mov eax, countRec
+    dec eax                ; lastIndex = countRec - 1
+    cmp eax, ebx
+    je del_last_one
+
+    ; copy last record into slot ebx
+    ; copy first_name
+    mov esi, countRec
+    dec esi
+    mov eax, esi
+    mov ecx, STRLEN
+    mul ecx
+    lea esi, first_name
+    add esi, eax    ; source
+
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, first_name
+    add edi, eax    ; dest
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; copy last_name
+    mov esi, countRec
+    dec esi
+    mov eax, esi
+    mov ecx, STRLEN
+    mul ecx
+    lea esi, last_name
+    add esi, eax
+
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, last_name
+    add edi, eax
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; copy id_array
+    mov esi, countRec
+    dec esi
+    mov eax, esi
+    mov ecx, STRLEN
+    mul ecx
+    lea esi, id_array
+    add esi, eax
+
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, id_array
+    add edi, eax
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; copy attendance & avg
+    mov eax, countRec
+    dec eax
+    mov al, attendance[eax]
+    mov attendance[ebx], al
+    mov al, avg[eax]
+    mov avg[ebx], al
+
+    ; decrement countRec
+    mov eax, countRec
+    dec eax
+    mov countRec, eax
+
+    mov edx, OFFSET delMsg
+    call WriteString
+    pop ebp
+    ret 4
+
+del_last_one:
+    ; deleting last element: just decrement count
+    mov eax, countRec
+    dec eax
+    mov countRec, eax
+    mov edx, OFFSET delMsg
+    call WriteString
+    pop ebp
+    ret 4
+
+del_not_found:
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    call Crlf
+    pop ebp
+    ret 4
+
+delete_by_id ENDP
+
+; ========================= UPDATE BY ID =========================
+; parameter: [ebp + 8] -> pointer to ID string
+update_by_id PROC
+    push ebp
+    mov ebp, esp
+
+    mov esi, DWORD PTR [ebp + 8]
+    mov ecx, countRec
+    cmp ecx, 0
+    je upd_not_found
+    mov ebx, 0
+
+upd_loop:
+    cmp ebx, ecx
+    jge upd_not_found
+
+    ; compute address of id_array[ebx]
+    mov eax, ebx
+    mov edx, STRLEN
+    mul edx
+    lea edi, id_array
+    add edi, eax
+
+    ; compare
+    mov esi, DWORD PTR [ebp + 8]
+    mov edx, STRLEN
+upd_compare_loop:
+    mov al, [esi]
+    mov bl, [edi]
+    cmp al, bl
+    jne upd_not_equal
+    cmp al, 0
+    je upd_found
+    inc esi
+    inc edi
+    dec edx
+    jnz upd_compare_loop
+    jmp upd_found
+
+upd_not_equal:
+    inc ebx
+    jmp upd_loop
+
+upd_found:
+    ; ask and overwrite same slot (first_name, last_name, attendance, avg)
+    ; first_name
+    mov edx, OFFSET addrec1
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, first_name
+    add edi, eax
+    mov esi, OFFSET inputBuffer
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; last_name
+    mov edx, OFFSET addrec2
+    call WriteString
+    mov edx, OFFSET inputBuffer
+    mov ecx, SIZEOF inputBuffer
+    call ReadString
+    mov eax, ebx
+    mov ecx, STRLEN
+    mul ecx
+    lea edi, last_name
+    add edi, eax
+    mov esi, OFFSET inputBuffer
+    mov ecx, STRLEN
+    cld
+    rep movsb
+
+    ; attendance
+    mov edx, OFFSET addrec4
+    call WriteString
+    call ReadInt
+    mov eax, ebx
+    mov attendance[eax], al
+
+    ; avg
+    mov edx, OFFSET addrec5
+    call WriteString
+    call ReadInt
+    mov eax, ebx
+    mov avg[eax], al
+
+    mov edx, OFFSET updMsg
+    call WriteString
+    pop ebp
+    ret 4
+
+upd_not_found:
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    call Crlf
+    pop ebp
+    ret 4
+update_by_id ENDP
+
+; ========================= COUNT TOTAL =========================
+count_total PROC
+    mov eax, countRec
+    mov edx, OFFSET countMsg
+    call WriteString
+    mov eax, countRec
+    call WriteDec
+    call Crlf
+    ret
+count_total ENDP
+
+; ========================= CLEAR ALL =========================
+clear_all PROC
+    ; zero count and zero arrays (optional: we just set count to 0)
+    mov countRec, 0
+    mov edx, OFFSET clearMsg
+    call WriteString
+    call Crlf
+    ret
+clear_all ENDP
+
+; ========================= AGGREGATE MENU & FUNCTIONS =========================
+find_min_att PROC
+    mov ecx, MAX
+    mov esi, OFFSET attendance
+    mov bl, 100            ; initial large value
+    xor edx, edx           ; count found
+
+min_att_loop:
+    cmp byte ptr [esi], 0
+    je skip1
+
+    mov al, [esi]
+    inc edx
+
+    cmp al, bl
+    jae skip1
+    mov bl, al
+
+skip1:
+    inc esi
+    loop min_att_loop
+
+    cmp edx, 0
+    je no_records_att
+
+    movzx eax, bl
+    call WriteDec
+    call CrLf
+    jmp end_min_att
+
+no_records_att:
+    mov edx, OFFSET msg_norec
+    call WriteString
+
+end_min_att:
+    ret
+find_min_att ENDP
+
+find_max_att PROC
+    mov ecx, MAX
+    mov esi, OFFSET attendance
+    mov bl, 0              ; initial small value
+    xor edx, edx
+
+max_att_loop:
+    cmp byte ptr [esi], 0
+    je skip2
+
+    mov al, [esi]
+    inc edx
+
+    cmp al, bl
+    jbe skip2
+    mov bl, al
+
+skip2:
+    inc esi
+    loop max_att_loop
+
+    cmp edx, 0
+    je no_records_att2
+
+    movzx eax, bl
+    call WriteDec
+    call CrLf
+    jmp end_max_att
+
+no_records_att2:
+    mov edx, OFFSET msg_norec
+    call WriteString
+
+end_max_att:
+    ret
+find_max_att ENDP
+
+
+find_min_marks PROC
+    mov ecx, MAX
+    mov esi, OFFSET avg
+    mov bl, 100
+    xor edx, edx
+
+min_marks_loop:
+    cmp byte ptr [esi], 0
+    je skip3
+
+    mov al, [esi]
+    inc edx
+
+    cmp al, bl
+    jae skip3
+    mov bl, al
+
+skip3:
+    inc esi
+    loop min_marks_loop
+
+    cmp edx, 0
+    je no_records_marks1
+    movzx eax, bl
+    call WriteDec
+    call CrLf
+    jmp end_min_marks
+
+no_records_marks1:
+    mov edx, OFFSET msg_norec
+    call WriteString
+
+end_min_marks:
+    ret
+find_min_marks ENDP
+
+find_max_marks PROC
+    mov ecx, MAX
+    mov esi, OFFSET avg
+    mov bl, 0
+    xor edx, edx
+
+max_marks_loop:
+    cmp byte ptr [esi], 0
+    je skip4
+
+    mov al, [esi]
+    inc edx
+
+    cmp al, bl
+    jbe skip4
+    mov bl, al
+
+skip4:
+    inc esi
+    loop max_marks_loop
+
+    cmp edx, 0
+    je no_records_marks2
+
+    movzx eax, bl
+    call WriteDec
+    call CrLf
+    jmp end_max_marks
+
+no_records_marks2:
+       mov edx, OFFSET msg_norec
+    call WriteString
+
+end_max_marks:
+    ret
+find_max_marks ENDP
+
+
+END main
